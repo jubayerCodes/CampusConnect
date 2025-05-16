@@ -1,4 +1,20 @@
 @import "tailwindcss";
+ @plugin "daisyui" {
+   themes: light --default;
+ }
+
+
+ :root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --btn-bg: #0073e1;
+  --secondary-bg: #dbdbdb31;
+  --text-color: #5c727d;
+  --header-bg: #001a33;
+  --label-color: #808191;
+  --input-bg: #ebf2f7;
+}
 
 .section {
   @apply py-12 xl:py-28;
