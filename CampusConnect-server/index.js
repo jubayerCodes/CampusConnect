@@ -1,8 +1,10 @@
 const express = require('express')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const cors = require('cors');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express()
 const port = 3000
+app.use(cors());
 
 
 // MongoDB connection
@@ -20,8 +22,22 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const CampusConnectDB = client.db("CampusConnectDB");
+    const collegeCollection = CampusConnectDB.collection("colleges")
 
-    
+
+    app.get('/colleges', async (req, res) => {
+      const colleges = await collegeCollection.find().toArray()
+
+      return res.json(colleges)
+    })
+
+    app.get('/colleges/:id', async (req, res) => {
+      const id = req?.params?.id
+      const college = await collegeCollection.findOne({ _id: new ObjectId(id) })
+
+      return res.json(college)
+    })
 
 
 
