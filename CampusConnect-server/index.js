@@ -10,7 +10,7 @@ app.use(cors());
 
 
 // MongoDB connection
-const uri = process.env.MONGODB_URI;
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASS}@cluster0.opkciwj.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -22,11 +22,13 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    client.connect();
 
     const CampusConnectDB = client.db("CampusConnectDB");
     const collegeCollection = CampusConnectDB.collection("colleges")
     const admissionCollection = CampusConnectDB.collection("admissions")
+    const reviewCollection = CampusConnectDB.collection("reviews")
+    const userCollection = CampusConnectDB.collection("users")
 
 
 
@@ -47,14 +49,103 @@ async function run() {
     app.post("/admission", async (req, res) => {
       const data = req.body
 
-      const result = await admissionCollection.insertOne(data)
+      const email = data?.email
 
-      console.log(result);
+      const existingAdmission = await admissionCollection.findOne({ email })
+
+      if (existingAdmission) {
+        return res.json({ existing: true, acknowledged: true })
+      }
+
+      const result = await admissionCollection.insertOne(data)
 
       res.json(result)
     })
 
 
+    app.get('/my-college/:email', async (req, res) => {
+      const email = req.params.email
+
+      const admission = await admissionCollection.findOne({ email })
+
+      if (!admission?._id) {
+        return res.json({})
+      }
+
+      const collegeId = await admission?.collegeId
+
+      const myCollege = await collegeCollection.findOne({ _id: new ObjectId(collegeId) })
+
+
+      const result = {
+        ...myCollege,
+        candidateName: admission?.fullName,
+        candidateImage: admission?.image
+      }
+
+      res.json(result)
+    })
+
+
+    app.post('/review', async (req, res) => {
+      const data = req.body
+      const existingReview = await reviewCollection.findOne({ email: data?.email, collegeId: data?.collegeId })
+
+
+      if (existingReview) {
+        return res.json({ existing: true, acknowledged: true })
+      }
+
+      const result = await reviewCollection.insertOne(data)
+      res.json(result)
+    })
+
+
+    app.get('/reviews', async (req, res) => {
+      const result = await reviewCollection?.find().toArray()
+
+      res.json(result)
+    })
+
+
+    app.post('/user', async (req, res) => {
+      const data = req.body
+
+      const existingUser = await userCollection.findOne({ email: data?.email })
+
+      if (existingUser) {
+        return res.json({ existing: true, acknowledged: true })
+      }
+
+      const result = await userCollection.insertOne(data)
+      res.json(result)
+    })
+
+    app.get('/user/:email', async (req, res) => {
+      const email = req.params.email
+
+      const result = await userCollection.findOne({ email })
+      res.json(result)
+    })
+
+
+    app.patch('/user/:email', async (req, res) => {
+      const email = req.params.email
+      const data = req.body
+
+      const existingUser = await userCollection.findOne({ email })
+
+      if (!existingUser) {
+        return res.json({ existing: false })
+      }
+
+      const result = await userCollection.updateOne({ email }, {
+        $set: data
+      })
+
+      res.json(result)
+
+    })
 
 
 

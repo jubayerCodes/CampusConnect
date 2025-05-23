@@ -7,12 +7,14 @@ import { AuthContext } from '../../Utilities/AuthProvider/AuthProvider';
 
 const Login = () => {
 
-    const { signUpWithEmailAndPassword, loginWithEmailAndPassword, user, loading } = useContext(AuthContext)
+    const [errorMessage, setErrorMessage] = useState("")
+
+    const { signUpWithEmailAndPassword, loginWithEmailAndPassword, user, loading, updateName, setUpdate, update } = useContext(AuthContext)
 
     const { register, handleSubmit, formState: { errors }, reset, watch } = useForm()
 
     const location = useLocation()
-    const from = location?.state?.from?.pathname
+    const from = location?.state?.from?.pathname || '/'
 
     const { register: registerLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorsLogin }, reset: resetLogin, watch: watchLogin } = useForm()
 
@@ -21,12 +23,27 @@ const Login = () => {
     const [isRegister, setIsRegister] = useState(false)
 
     const handleRegister = (data) => {
-        const { email, password} = data
+        const { email, password, fullName, address } = data
 
         signUpWithEmailAndPassword(email, password)
             .then((result) => {
                 const user = result.user
-                console.log(user)
+
+                updateName(fullName)
+                    .then(res => {
+                        setUpdate(!update)
+                        fetch(`${import.meta.env.VITE_API}/user`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ email, fullName, address })
+                        })
+                        navigate(from)
+                    })
+            })
+            .catch(error => {
+                setErrorMessage(error.message);
             })
 
         reset()
@@ -38,10 +55,10 @@ const Login = () => {
         loginWithEmailAndPassword(email, password)
             .then((result) => {
                 const user = result.user
-                console.log(user)
-            }).catch((error) => {
-                const errorMessage = error.message;
-                console.log(errorMessage);
+                navigate(from)
+            })
+            .catch(error => {
+                setErrorMessage(error.message);
             })
 
         resetLogin()
@@ -58,13 +75,22 @@ const Login = () => {
                             <form onSubmit={handleSubmitLogin(handleLogin)} className={`flex-col items-stretch justify-between`}>
                                 <input {...registerLogin('email', { required: true })} placeholder='Email' className='w-full mb-5 border focus:outline-none p-2 text-sm' type="email" name="email" id="login-email-field" required />
                                 <input {...registerLogin('password', { required: true })} placeholder='Password' className='w-full mb-5 border focus:outline-none p-2 text-sm' type="password" name="password" id="login-password-field" required />
+
+                                {
+                                    errorMessage == 'Firebase: Error (auth/invalid-credential).' ? (
+                                        <span className='text-error mb-5 block'>Invalid Email/Password</span>
+                                    ) : <></>
+                                }
+
                                 <input type="submit" value="Login" className='cursor-pointer w-full mb-5 primary-btn' style={{ width: '100%' }} />
                             </form>
-                            <SocialLogin className={'mt-4'} />
+                            <SocialLogin from={from} className={'mt-4'} />
                         </div>
                         <div className={`${isRegister ? '' : 'hidden'}`}>
                             <form onSubmit={handleSubmit(handleRegister)} className={`flex-col items-stretch justify-between `}>
 
+                                <input required {...register('fullName', { required: true })} placeholder='Full Name' className='w-full mb-5 border focus:outline-none p-2 text-sm' type="text" name="fullName" id="register-name-field" />
+                                <input required {...register('address', { required: true })} placeholder='Address' className='w-full mb-5 border focus:outline-none p-2 text-sm' type="text" name="address" id="register-address-field" />
                                 <input required {...register('email', { required: true })} placeholder='Email' className='w-full mb-5 border focus:outline-none p-2 text-sm' type="email" name="email" id="register-email-field" />
                                 <input required {...register('password', {
                                     required: true,
@@ -76,9 +102,15 @@ const Login = () => {
 
                                 {errors.password && <span className='form-warning'>{errors.password.message}</span>}
 
+                                {
+                                    errorMessage == 'Firebase: Error (auth/email-already-in-use).' ? (
+                                        <span className='text-error mb-5 block'>Email already in use</span>
+                                    ) : <></>
+                                }
+
                                 <input type="submit" value="Register" className='cursor-pointer w-full mb-5 primary-btn' style={{ width: '100%' }} />
                             </form>
-                            <SocialLogin className={'mt-4'} />
+                            <SocialLogin from={from} className={'mt-4'} />
                         </div>
                         <div className='flex justify-between items-center mt-5'>
                             <button onClick={() => setIsRegister(true)} className={`cursor-pointer transition hover:text-[var(--btn-bg)] ${isRegister ? 'hidden' : ''}`}>Register here!</button>
